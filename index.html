@@ -484,8 +484,8 @@ function die() {
   log(`⚰️ توفيت عن عمر ${S.age} سنة بسبب ${cause}.`, "bad");
   const netWorth = S.money + S.assets.reduce((s, id) => s + (ASSETS.find(a => a.id === id)?.price || 0) * .7, 0);
   const score = Math.round(S.age * 10 + S.happy * 5 + S.edu * 100 + Math.max(0, netWorth) / 1000 + S.children.length * 150 + (S.married ? 200 : 0) + S.friends.length * 30 - S.criminal * 100);
-  const best = +localStorage.getItem("reallife_best") || 0;
-  if (score > best) localStorage.setItem("reallife_best", score);
+  let best = 0;
+  try { best = +localStorage.getItem("reallife_best") || 0; if (score > best) localStorage.setItem("reallife_best", score); } catch (e) {}
   save(); render();
   modal(`<h2>⚰️ انتهت الحياة</h2>
     <p><b>${S.name}</b> (${S.age} سنة) — ${cause}</p>
@@ -595,7 +595,12 @@ function startScreen() {
 }
 
 $("nextYear").onclick = nextYear;
-$("newGame").onclick = () => { if (!S || !S.alive || confirm("هل تريد حقاً بدء حياة جديدة؟ ستفقد هذه الحياة.")) startScreen(); };
+$("newGame").onclick = () => {
+  if (!S || !S.alive) return startScreen();
+  modal(`<h2>🔄 حياة جديدة؟</h2><p>هل تريد حقاً بدء حياة جديدة؟ ستفقد هذه الحياة.</p>
+    <div class="choices"><button class="primary" id="yes">نعم، ابدأ من جديد</button><button id="no">لا، أكمل حياتي</button></div>`,
+    box => { box.querySelector("#yes").onclick = () => startScreen(); box.querySelector("#no").onclick = closeModal; });
+};
 
 if (load()) render(); else { newLife(); startScreen(); }
 </script>
