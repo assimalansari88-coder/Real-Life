@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الحياة الواقعية</title>
+<style>
+  :root {
+    --bg: #0f172a; --card: #1e293b; --card2: #273449; --text: #e2e8f0; --muted: #94a3b8;
+    --accent: #38bdf8; --good: #4ade80; --bad: #f87171; --warn: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 16px; }
+  header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  h1 { margin: 0; font-size: 1.6rem; }
+  h1 span { color: var(--accent); }
+  .card { background: var(--card); border-radius: 14px; padding: 16px; margin-top: 14px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+  .profile { display: flex; gap: 14px; align-items: center; }
+  .avatar { font-size: 3rem; width: 70px; height: 70px; display: grid; place-items: center; background: var(--card2); border-radius: 50%; }
+  .profile .info div { margin: 2px 0; }
+  .muted { color: var(--muted); font-size: .9rem; }
+  .stat { margin: 8px 0; }
+  .stat .label { display: flex; justify-content: space-between; font-size: .95rem; }
+  .bar { height: 10px; background: var(--card2); border-radius: 6px; overflow: hidden; margin-top: 4px; }
+  .bar > i { display: block; height: 100%; border-radius: 6px; transition: width .4s; }
+  .money { font-size: 1.3rem; font-weight: bold; color: var(--good); }
+  .money.neg { color: var(--bad); }
+  .actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  button {
+    font: inherit; background: var(--card2); color: var(--text); border: 1px solid #334155;
+    border-radius: 10px; padding: 10px; cursor: pointer; transition: .15s;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-1px); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  button.primary { background: var(--accent); color: #0f172a; font-weight: bold; border: none; }
+  button small { display: block; color: var(--muted); font-size: .75rem; margin-top: 2px; }
+  button.primary small { color: #0f172a; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .tabs button.active { border-color: var(--accent); color: var(--accent); }
+  .log { max-height: 340px; overflow-y: auto; font-size: .92rem; }
+  .log p { margin: 0; padding: 6px 4px; border-bottom: 1px solid #334155; }
+  .log .age { color: var(--accent); font-weight: bold; }
+  .log .good { color: var(--good); } .log .bad { color: var(--bad); } .log .warn { color: var(--warn); }
+  .time { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .pill { background: var(--card2); padding: 4px 10px; border-radius: 20px; font-size: .9rem; }
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.65); display: none; place-items: center; z-index: 10; padding: 16px; }
+  .modal.show { display: grid; }
+  .modal .box { background: var(--card); border-radius: 16px; padding: 22px; max-width: 460px; width: 100%; }
+  .modal h2 { margin-top: 0; }
+  .modal .choices { display: grid; gap: 8px; margin-top: 14px; }
+  input, select { font: inherit; width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #334155; background: var(--card2); color: var(--text); margin-top: 6px; }
+  .rel { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #334155; gap: 8px; }
+  .rel button { padding: 4px 10px; font-size: .85rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🌍 <span>الحياة</span> الواقعية</h1>
+    <div class="time">
+      <span class="pill" id="yearPill"></span>
+      <span class="pill" id="energyPill"></span>
+      <button class="primary" id="nextYear">⏭️ السنة التالية</button>
+      <button id="newGame">🔄 حياة جديدة</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <div class="profile">
+        <div class="avatar" id="avatar">👶</div>
+        <div class="info">
+          <div><b id="name"></b></div>
+          <div class="muted" id="ageLine"></div>
+          <div class="muted" id="jobLine"></div>
+          <div class="muted" id="eduLine"></div>
+          <div class="money" id="money"></div>
+        </div>
+      </div>
+      <div id="stats"></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">📜 سجل الحياة</h3>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tabs" id="tabs"></div>
+    <div class="actions" id="actions"></div>
+  </div>
+</div>
+
+<div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
+
+<script>
+// ======================= البيانات =======================
+const MALE = ["أحمد","محمد","يوسف","عمر","خالد","سعيد","علي","حسن","كريم","سامي","طارق","زياد"];
+const FEMALE = ["فاطمة","مريم","سارة","نور","ليلى","هدى","ريم","آمنة","سلمى","جنى","رنا","دينا"];
+const LAST = ["العلي","الحسن","المصري","الأحمد","السعيد","النجار","الخطيب","الحداد","الشامي","البغدادي"];
+const CITIES = ["القاهرة","الرياض","دبي","عمّان","الدار البيضاء","بيروت","تونس","الدوحة","بغداد","مسقط"];
+
+const EDU = ["بدون", "ابتدائي", "ثانوي", "جامعي", "ماجستير", "دكتوراه"];
+
+const JOBS = [
+  { id:"cashier",  name:"كاشير في سوبرماركت", salary: 18000, edu:0, minAge:16, smart:0,  stress:6 },
+  { id:"waiter",   name:"نادل في مطعم",        salary: 20000, edu:0, minAge:16, smart:0,  stress:7 },
+  { id:"driver",   name:"سائق توصيل",          salary: 24000, edu:1, minAge:18, smart:0,  stress:6 },
+  { id:"builder",  name:"عامل بناء",            salary: 28000, edu:0, minAge:18, smart:0,  stress:9 },
+  { id:"sales",    name:"موظف مبيعات",          salary: 35000, edu:2, minAge:18, smart:30, stress:8 },
+  { id:"nurse",    name:"ممرض/ة",               salary: 45000, edu:3, minAge:21, smart:45, stress:10 },
+  { id:"teacher",  name:"معلم/ة",               salary: 42000, edu:3, minAge:22, smart:50, stress:7 },
+  { id:"accountant", name:"محاسب/ة",            salary: 55000, edu:3, minAge:22, smart:55, stress:7 },
+  { id:"engineer", name:"مهندس/ة",              salary: 75000, edu:3, minAge:22, smart:65, stress:8 },
+  { id:"programmer", name:"مبرمج/ة",            salary: 85000, edu:3, minAge:21, smart:65, stress:8 },
+  { id:"lawyer",   name:"محامي/ة",              salary: 95000, edu:4, minAge:24, smart:70, stress:10 },
+  { id:"doctor",   name:"طبيب/ة",               salary: 130000, edu:5, minAge:27, smart:80, stress:11 },
+  { id:"professor",name:"أستاذ/ة جامعي",        salary: 110000, edu:5, minAge:28, smart:85, stress:6 },
+];
+
+const ASSETS = [
+  { id:"bike",  name:"دراجة هوائية 🚲",  price: 500,    happy:3,  upkeep:0 },
+  { id:"car",   name:"سيارة مستعملة 🚗", price: 12000,  happy:8,  upkeep:1500 },
+  { id:"lux",   name:"سيارة فاخرة 🏎️",   price: 90000,  happy:15, upkeep:6000 },
+  { id:"flat",  name:"شقة صغيرة 🏢",     price: 120000, happy:15, upkeep:2000 },
+  { id:"villa", name:"فيلا 🏡",          price: 450000, happy:25, upkeep:8000 },
+];
+
+// ======================= الحالة =======================
+let S;
+const $ = id => document.getElementById(id);
+const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const clamp = v => Math.max(0, Math.min(100, Math.round(v)));
+const fmt = n => (n < 0 ? "-" : "") + "$" + Math.abs(Math.round(n)).toLocaleString("en-US");
+const chance = p => Math.random() < p;
+
+function newLife(name, gender) {
+  gender = gender || (chance(.5) ? "m" : "f");
+  const first = name || pick(gender === "m" ? MALE : FEMALE);
+  const wealth = rnd(0, 100);
+  S = {
+    name: first + " " + pick(LAST), gender, city: pick(CITIES),
+    age: 0, alive: true,
+    health: rnd(65, 100), happy: rnd(60, 100), smart: rnd(20, 70), looks: rnd(20, 90), fit: rnd(30, 70),
+    money: 0, familyWealth: wealth,
+    edu: 0, inSchool: false, uni: null, uniYears: 0,
+    job: null, jobYears: 0, performance: 50,
+    partner: null, married: false, children: [],
+    parents: [
+      { name: pick(MALE) + " (الأب)", rel: rnd(50, 95), age: rnd(25, 40), alive: true, m: true },
+      { name: pick(FEMALE) + " (الأم)", rel: rnd(60, 100), age: rnd(22, 38), alive: true },
+    ],
+    friends: [],
+    assets: [],
+    energy: 0, maxEnergy: 0,
+    sick: null, addicted: false, criminal: 0, jail: 0,
+    log: [], tab: "main",
+  };
+  log(`👶 وُلدت في ${S.city}. اسمك ${S.name}.`, "good");
+  log(wealth > 75 ? "💎 عائلتك ثرية جداً." : wealth > 40 ? "🏠 عائلتك من الطبقة المتوسطة." : "🥖 عائلتك فقيرة، لكنها مليئة بالحب.");
+  resetEnergy();
+  save(); render();
+}
+
+function log(text, cls = "") { S.log.unshift({ age: S.age, text, cls }); if (S.log.length > 300) S.log.pop(); }
+
+function resetEnergy() {
+  S.maxEnergy = S.age < 5 ? 1 : S.age < 12 ? 3 : S.age < 65 ? 5 : 3;
+  S.energy = S.jail > 0 ? 1 : S.maxEnergy;
+}
+
+function save() { try { localStorage.setItem("reallife_save", JSON.stringify(S)); } catch(e){} }
+function load() {
+  try { const d = JSON.parse(localStorage.getItem("reallife_save")); if (d && d.name) { S = d; return true; } } catch(e){}
+  return false;
+}
+
+const he = () => S.gender === "m";
+const eduName = () => EDU[S.edu];
+
+// ======================= الأنشطة =======================
+// كل نشاط: tab, label, desc, cost(طاقة), money, cond(), run()
+const ACTIONS = [
+  // --- أساسي ---
+  { tab:"main", label:"📚 ادرس بجد", desc:"+ذكاء", cost:1, cond:()=>S.age>=5,
+    run(){ const g=rnd(2,5); S.smart+=g; S.happy-=2; if(S.uni) S.performance+=3; return [`📚 درست بجد. (+${g} ذكاء)`,"good"]; } },
+  { tab:"main", label:"🏋️ مارس الرياضة", desc:"+صحة +لياقة", cost:1, cond:()=>S.age>=6,
+    run(){ S.fit+=rnd(3,6); S.health+=rnd(1,4); S.happy+=2; if(chance(.04)){S.health-=12; return ["🤕 أُصبت أثناء التمرين!","bad"];} return ["🏋️ تمرين رائع، تشعر بالنشاط.","good"]; } },
+  { tab:"main", label:"🧘 تأمل واسترخِ", desc:"+سعادة", cost:1, cond:()=>S.age>=8,
+    run(){ S.happy+=rnd(4,8); S.health+=1; return ["🧘 شعرت براحة نفسية عميقة.","good"]; } },
+  { tab:"main", label:"🎮 العب ألعاب فيديو", desc:"+سعادة -لياقة", cost:1, cond:()=>S.age>=4,
+    run(){ S.happy+=rnd(3,7); S.fit-=1; return ["🎮 قضيت وقتاً ممتعاً في اللعب.",""]; } },
+  { tab:"main", label:"📖 اقرأ كتاباً", desc:"+ذكاء +سعادة", cost:1, cond:()=>S.age>=7,
+    run(){ S.smart+=rnd(1,3); S.happy+=2; return [`📖 قرأت كتاب "${pick(["فن الحرب","مئة عام من العزلة","الخيميائي","مقدمة ابن خلدون","العادات الذرية"])}".`,"good"]; } },
+  { tab:"main", label:"💇 اعتنِ بمظهرك", desc:"+مظهر  $300", cost:1, money:300, cond:()=>S.age>=13,
+    run(){ S.looks+=rnd(2,5); S.happy+=2; return ["💇 تبدو أنيقاً اليوم!","good"]; } },
+  { tab:"main", label:"🏥 زر الطبيب", desc:"علاج  $500", cost:1, money:500, cond:()=>S.age>=18,
+    run(){ S.health+=rnd(8,15); if(S.sick){ const s=S.sick; S.sick=null; return [`🏥 شفيت من ${s}.`,"good"]; } return ["🏥 الفحص سليم، الطبيب نصحك بالراحة.","good"]; } },
+  { tab:"main", label:"🎰 جرّب حظك (يانصيب)", desc:"$50", cost:1, money:50, cond:()=>S.age>=18,
+    run(){ if(chance(.003)){ S.money+=1000000; S.happy+=40; return ["🎉🎉 ربحت المليون في اليانصيب!!","good"]; } if(chance(.05)){ const w=rnd(100,2000); S.money+=w; return [`🎟️ ربحت ${fmt(w)}!`,"good"]; } return ["🎟️ لم تربح شيئاً هذه المرة.",""]; } },
+
+  // --- التعليم ---
+  { tab:"edu", label:"🎓 التحق بالجامعة", desc:"4 سنوات  $8,000/سنة", cost:0, cond:()=>S.age>=18 && S.edu===2 && !S.uni && !S.job,
+    run(){ S.uni={ level:3, years:4, name:"البكالوريوس" }; S.uniYears=0; return ["🎓 التحقت بالجامعة! بداية جديدة.","good"]; } },
+  { tab:"edu", label:"🎓 ماجستير", desc:"سنتان  $12,000/سنة", cost:0, cond:()=>S.edu===3 && !S.uni && S.smart>=55,
+    run(){ if(S.job){ log(`🚪 تركت وظيفة ${S.job.name} للدراسة.`); S.job=null; } S.uni={ level:4, years:2, name:"الماجستير" }; S.uniYears=0; return ["🎓 بدأت دراسة الماجستير.","good"]; } },
+  { tab:"edu", label:"🎓 دكتوراه / طب", desc:"4 سنوات  $15,000/سنة", cost:0, cond:()=>S.edu===4 && !S.uni && S.smart>=70,
+    run(){ if(S.job){ log(`🚪 تركت وظيفة ${S.job.name} للدراسة.`); S.job=null; } S.uni={ level:5, years:4, name:"الدكتوراه" }; S.uniYears=0; return ["🎓 بدأت رحلة الدكتوراه!","good"]; } },
+  { tab:"edu", label:"🚪 انسحب من الدراسة", desc:"", cost:0, cond:()=>!!S.uni,
+    run(){ const n=S.uni.name; S.uni=null; S.happy-=5; return [`🚪 انسحبت من ${n}.`,"warn"]; } },
+  { tab:"edu", label:"📝 دورة تدريبية", desc:"+ذكاء  $1,000", cost:1, money:1000, cond:()=>S.age>=16,
+    run(){ S.smart+=rnd(3,6); S.performance+=5; return ["📝 أنهيت دورة تدريبية مفيدة.","good"]; } },
+
+  // --- العمل ---
+  { tab:"work", label:"💪 اعمل ساعات إضافية", desc:"+أداء +مال -سعادة", cost:1, cond:()=>!!S.job,
+    run(){ const b=Math.round(S.job.salary*0.05); S.money+=b; S.performance+=8; S.happy-=3; S.health-=1; return [`💪 عملت ساعات إضافية وكسبت ${fmt(b)}.`,"good"]; } },
+  { tab:"work", label:"📈 اطلب ترقية", desc:"", cost:1, cond:()=>!!S.job && S.jobYears>=1,
+    run(){ if(S.performance>=70 && chance(.7)){ const r=Math.round(S.job.salary*rnd(10,25)/100); S.job.salary+=r; S.performance=50; S.happy+=10; return [`📈 حصلت على ترقية! راتبك الآن ${fmt(S.job.salary)}.`,"good"]; } S.happy-=5; S.performance-=5; return ["😞 رفض المدير طلب الترقية.","bad"]; } },
+  { tab:"work", label:"🚪 استقل من العمل", desc:"", cost:0, cond:()=>!!S.job,
+    run(){ const n=S.job.name; S.job=null; S.jobYears=0; return [`🚪 استقلت من عملك كـ${n}.`,"warn"]; } },
+  { tab:"work", label:"🛵 عمل حر مؤقت", desc:"+$200-800", cost:1, cond:()=>S.age>=14 && !S.job,
+    run(){ const g=rnd(200,800); S.money+=g; return [`🛵 أنجزت عملاً حراً وكسبت ${fmt(g)}.`,"good"]; } },
+
+  // --- العلاقات ---
+  { tab:"social", label:"💘 ابحث عن شريك", desc:"", cost:1, cond:()=>S.age>=18 && !S.partner,
+    run(){ const p = S.looks/100*0.5 + S.happy/100*0.3 + 0.1;
+      if(chance(p)){ S.partner={ name: pick(he()?FEMALE:MALE), rel: rnd(55,85), years:0 }; S.happy+=12; return [`💘 بدأت علاقة مع ${S.partner.name}!`,"good"]; }
+      S.happy-=4; return ["💔 لم تجد أحداً مناسباً هذه المرة.","bad"]; } },
+  { tab:"social", label:"💍 تقدّم للزواج", desc:"$5,000 للحفل", cost:1, money:5000, cond:()=>S.partner && !S.married && S.partner.years>=1,
+    run(){ if(S.partner.rel>=65 && chance(.8)){ S.married=true; S.happy+=20; return [`💍 تزوجت من ${S.partner.name}! أجمل يوم في حياتك.`,"good"]; } S.partner.rel-=10; S.happy-=10; return [`😢 ${S.partner.name} رفض/ت طلب الزواج.`,"bad"]; } },
+  { tab:"social", label:"👶 أنجب طفلاً", desc:"", cost:1, cond:()=>S.married && S.age<=48 && S.children.length<6,
+    run(){ if(chance(.6)){ const g=chance(.5); const c={ name: pick(g?MALE:FEMALE), age:0, rel:90 }; S.children.push(c); S.happy+=15; return [`👶 رُزقت بطفل اسمه ${c.name}!`,"good"]; } return ["⏳ لم يحدث حمل هذه السنة.",""]; } },
+  { tab:"social", label:"🧑‍🤝‍🧑 تعرّف على صديق", desc:"", cost:1, cond:()=>S.age>=5,
+    run(){ if(chance(.65)){ const f={ name: pick(chance(.5)?MALE:FEMALE), rel: rnd(40,70) }; S.friends.push(f); S.happy+=5; return [`🧑‍🤝‍🧑 أصبح ${f.name} صديقك.`,"good"]; } return ["🙃 حاولت التعرف على أشخاص جدد لكن دون نجاح.",""]; } },
+  { tab:"social", label:"🎉 اذهب لحفلة", desc:"+سعادة  $100", cost:1, money:100, cond:()=>S.age>=16,
+    run(){ S.happy+=rnd(5,10); S.friends.forEach(f=>f.rel+=2); if(chance(.08)){ S.health-=8; return ["🤢 بالغت في الحفلة وتعبت في اليوم التالي.","bad"]; } return ["🎉 قضيت ليلة رائعة!","good"]; } },
+
+  // --- التسوق ---
+  ...ASSETS.map(a => ({ tab:"shop", label:"🛒 "+a.name, desc: fmt(a.price) + (a.upkeep? ` (+${fmt(a.upkeep)}/سنة)`:""), cost:0, money:a.price,
+    cond:()=>S.age>=(a.id==="bike"?8:18) && !S.assets.includes(a.id),
+    run(){ S.assets.push(a.id); S.happy+=a.happy; return [`🛒 اشتريت ${a.name}!`,"good"]; } })),
+  { tab:"shop", label:"✈️ سافر في عطلة", desc:"+سعادة كبيرة  $3,000", cost:1, money:3000, cond:()=>S.age>=18,
+    run(){ const c=pick(["باريس","إسطنبول","طوكيو","المالديف","مراكش","روما","بالي"]); S.happy+=rnd(12,20); S.health+=3; return [`✈️ سافرت إلى ${c} وقضيت أجمل الأوقات!`,"good"]; } },
+  { tab:"shop", label:"💰 استثمر في الأسهم", desc:"$5,000 مخاطرة", cost:1, money:5000, cond:()=>S.age>=18,
+    run(){ const r=rnd(-60,90)/100; const g=Math.round(5000*(1+r)); S.money+=g; return r>=0?[`📈 ربح الاستثمار! استرجعت ${fmt(g)}.`,"good"]:[`📉 خسر الاستثمار، استرجعت ${fmt(g)} فقط.`,"bad"]; } },
+  { tab:"shop", label:"🤲 تبرّع للخير", desc:"$1,000", cost:1, money:1000, cond:()=>S.age>=16,
+    run(){ S.happy+=8; return ["🤲 تبرعت لجمعية خيرية. شعور رائع!","good"]; } },
+
+  // --- مخاطر ---
+  { tab:"risk", label:"🦹 اسرق متجراً", desc:"مخاطرة عالية", cost:1, cond:()=>S.age>=14,
+    run(){ if(chance(.55)){ const g=rnd(200,3000); S.money+=g; S.criminal++; return [`🦹 سرقت ${fmt(g)} ونجوت... هذه المرة.`,"warn"]; } return goJail(rnd(1,3), "السرقة"); } },
+  { tab:"risk", label:"🎲 قمار في الكازينو", desc:"$1,000", cost:1, money:1000, cond:()=>S.age>=21,
+    run(){ if(chance(.42)){ S.money+=2000; S.happy+=6; return ["🎲 ضاعفت رهانك!","good"]; } S.happy-=4; return ["🎲 خسرت الرهان.","bad"]; } },
+  { tab:"risk", label:"🚬 جرّب التدخين", desc:"-صحة", cost:1, money:50, cond:()=>S.age>=15 && !S.addicted,
+    run(){ S.health-=5; S.happy+=3; if(chance(.4)){ S.addicted=true; return ["🚬 أصبحت مدمناً على التدخين!","bad"]; } return ["🚬 جرّبت السيجارة... لم تعجبك كثيراً.","warn"]; } },
+  { tab:"risk", label:"🚭 أقلع عن التدخين", desc:"", cost:1, cond:()=>S.addicted,
+    run(){ if(chance(.45)){ S.addicted=false; S.happy+=10; S.health+=5; return ["🚭 أقلعت عن التدخين! فخور بنفسك.","good"]; } S.happy-=5; return ["😩 فشلت محاولة الإقلاع هذه المرة.","bad"]; } },
+];
+
+function goJail(years, why) { S.jail = years; S.criminal++; if (S.job) { S.job = null; S.jobYears = 0; } S.happy -= 25; S.energy = 0; return [`🚔 قُبض عليك بتهمة ${why}! حُكم عليك بالسجن ${years} سنة.`, "bad"]; }
+
+const TABS = [
+  { id:"main", label:"⭐ أساسي" }, { id:"edu", label:"🎓 تعليم" }, { id:"work", label:"💼 عمل" },
+  { id:"jobs", label:"📋 وظائف" }, { id:"social", label:"❤️ علاقات" }, { id:"people", label:"👨‍👩‍👧 الناس" },
+  { id:"shop", label:"🛍️ تسوق" }, { id:"risk", label:"⚠️ مخاطر" },
+];
+
+function doAction(a) {
+  if (!S.alive || S.energy < a.cost || (a.money && S.money < a.money)) return;
+  if (S.jail > 0) return;
+  S.energy -= a.cost;
+  if (a.money) S.money -= a.money;
+  const [t, c] = a.run();
+  log(t, c);
+  normalize(); save(); render();
+}
+
+function applyJob(j) {
+  if (S.energy < 1 || S.jail > 0) return;
+  S.energy--;
+  const p = 0.35 + (S.smart - j.smart) / 100 + S.looks / 400 + (S.criminal ? -0.25 : 0);
+  if (chance(Math.max(0.05, Math.min(0.92, p)))) {
+    if (S.job) log(`🚪 تركت عملك كـ${S.job.name}.`);
+    S.job = { id: j.id, name: j.name, salary: Math.round(j.salary * rnd(90, 110) / 100), stress: j.stress };
+    S.jobYears = 0; S.performance = 50; S.happy += 8;
+    log(`💼 تم قبولك كـ${j.name} براتب ${fmt(S.job.salary)} سنوياً!`, "good");
+  } else {
+    S.happy -= 3;
+    log(`📭 رُفض طلبك لوظيفة ${j.name}.`, "bad");
+  }
+  normalize(); save(); render();
+}
+
+function interact(kind, idx, type) {
+  if (S.energy < 1 || S.jail > 0) return;
+  let p = kind === "parent" ? S.parents[idx] : kind === "child" ? S.children[idx] : kind === "friend" ? S.friends[idx] : S.partner;
+  if (!p) return;
+  S.energy--;
+  if (type === "time") {
+    p.rel += rnd(5, 12); S.happy += 4;
+    log(`☕ قضيت وقتاً جميلاً مع ${p.name}.`, "good");
+  } else if (type === "money") {
+    if (kind === "parent" && S.age < 18) {
+      if (chance(0.3 + S.familyWealth / 200)) { const g = rnd(10, 50) * (1 + Math.floor(S.familyWealth / 25)); S.money += g; log(`💵 أعطاك ${p.name} مصروفاً بقيمة ${fmt(g)}.`, "good"); }
+      else { p.rel -= 3; log(`🙅 رفض ${p.name} إعطاءك المال.`, "warn"); }
+    } else {
+      const g = 500; if (S.money < g) { S.energy++; return; }
+      S.money -= g; p.rel += 10; log(`🎁 أهديت ${p.name} هدية بقيمة ${fmt(g)}.`, "good");
+    }
+  } else if (type === "fight") {
+    p.rel -= rnd(10, 25); S.happy -= 5;
+    log(`😠 تشاجرت مع ${p.name}.`, "bad");
+  } else if (type === "breakup") {
+    log(S.married ? `💔 تطلّقت من ${S.partner.name}.` : `💔 انفصلت عن ${S.partner.name}.`, "bad");
+    if (S.married) S.money -= Math.max(0, Math.round(S.money * 0.4));
+    S.partner = null; S.married = false; S.happy -= 15;
+  }
+  if (p.rel !== undefined) p.rel = clamp(p.rel);
+  normalize(); save(); render();
+}
+
+// ======================= مرور السنة =======================
+function nextYear() {
+  if (!S.alive) return;
+  S.age++;
+  const msgs = [];
+
+  // الوالدان
+  S.parents.forEach(p => {
+    if (!p.alive) return; p.age++;
+    if (p.age > 60 && chance((p.age - 60) / 120)) { p.alive = false; S.happy -= 25; log(p.m ? `🕊️ تُوفي ${p.name} عن عمر ${p.age} سنة. رحمه الله.` : `🕊️ تُوفيت ${p.name} عن عمر ${p.age} سنة. رحمها الله.`, "bad");
+      if (S.age >= 18 && S.familyWealth > 30) { const inh = Math.round(S.familyWealth * rnd(500, 3000)); S.money += inh; log(`📜 ورثت ${fmt(inh)}.`, "good"); } }
+  });
+  S.children.forEach(c => c.age++);
+  if (S.partner) S.partner.years++;
+
+  // المراحل الدراسية
+  if (S.age === 6) { S.edu = 0; log("🏫 بدأت المدرسة الابتدائية."); }
+  if (S.age === 12) { S.edu = 1; log("🎒 أنهيت الابتدائية وانتقلت إلى الثانوية.", "good"); }
+  if (S.age === 18) {
+    if (S.smart >= 25 || chance(.6)) { S.edu = 2; log("🎓 تخرجت من الثانوية! يمكنك الآن الالتحاق بالجامعة أو العمل.", "good"); }
+    else { log("📉 لم تنجح في امتحانات الثانوية.", "bad"); }
+  }
+  if (S.age === 18 && S.familyWealth > 60) { const g = rnd(2000, 15000); S.money += g; log(`🎁 أهداك والداك ${fmt(g)} بمناسبة بلوغك 18.`, "good"); }
+
+  // الجامعة
+  if (S.uni) {
+    const fee = S.uni.level === 3 ? 8000 : S.uni.level === 4 ? 12000 : 15000;
+    const help = S.familyWealth > 50 && S.age < 26 ? fee : 0;
+    S.money -= (fee - help);
+    if (help) log(`👪 دفع والداك رسوم الجامعة (${fmt(fee)}).`);
+    S.uniYears++; S.smart += rnd(2, 5);
+    if (S.uniYears >= S.uni.years) {
+      if (S.smart >= 35 + S.uni.level * 5 || chance(.5)) { S.edu = S.uni.level; log(`🎓🎉 تخرجت وحصلت على ${S.uni.name}!`, "good"); S.happy += 15; }
+      else { log(`📉 رسبت في سنة التخرج من ${S.uni.name}.`, "bad"); S.uniYears--; S.happy -= 10; }
+      if (S.edu === S.uni.level) S.uni = null;
+    }
+  }
+
+  // العمل
+  if (S.job) {
+    S.money += S.job.salary;
+    S.jobYears++;
+    S.happy -= S.job.stress / 3;
+    S.health -= S.job.stress / 6;
+    S.performance += rnd(-10, 6);
+    if (S.performance < 15 && chance(.6)) { log(`🔥 طُردت من عملك كـ${S.job.name} بسبب ضعف الأداء.`, "bad"); S.job = null; S.jobYears = 0; S.happy -= 15; }
+    else if (S.jobYears % 3 === 0) { S.job.salary = Math.round(S.job.salary * 1.04); }
+  }
+
+  // نفقات المعيشة
+  if (S.age >= 18 && !S.jail) {
+    const hasHome = S.assets.includes("flat") || S.assets.includes("villa");
+    let cost = (hasHome ? 6000 : 12000) + S.children.length * 4000;
+    if (S.age < 22 && !S.job && S.familyWealth > 30 && S.parents.some(p => p.alive)) cost = 0;
+    const upkeep = S.assets.reduce((s, id) => s + (ASSETS.find(a => a.id === id)?.upkeep || 0), 0);
+    S.money -= cost + upkeep;
+    if (S.money < -20000) { S.happy -= 10; log("💸 الديون تتراكم عليك! أنت تحت ضغط مالي كبير.", "bad"); }
+  }
+  // تقاعد
+  if (S.job && S.age >= 65) { log(`🏖️ تقاعدت من عملك كـ${S.job.name}.`, "good"); S.pension = Math.round(S.job.salary * 0.4); S.job = null; }
+  if (S.pension) S.money += S.pension;
+
+  // السجن
+  if (S.jail > 0) { S.jail--; S.happy -= 8; if (S.jail === 0) log("🔓 أُطلق سراحك من السجن.", "good"); else log(`⛓️ ما زال أمامك ${S.jail} سنة في السجن.`, "bad"); }
+
+  // الصحة والعمر
+  if (S.addicted) S.health -= 4;
+  if (S.sick) {
+    if (S.age < 18 && S.parents.some(p => p.alive) && chance(.8)) { log(`👪 أخذك والداك إلى الطبيب وشُفيت من ${S.sick}.`, "good"); S.sick = null; }
+    else if (chance(.3)) { log(`🌿 تعافيت من ${S.sick} بشكل طبيعي.`, "good"); S.sick = null; }
+    else S.health -= 7;
+  }
+  if (S.age > 40) S.health -= rnd(0, Math.floor((S.age - 35) / 10) + 1);
+  if (S.age > 30) S.looks -= chance(.4) ? 1 : 0;
+  S.fit -= S.age > 30 ? 2 : 1;
+  if (S.fit > 60) S.health += 1;
+  S.happy += (50 - S.happy) * 0.1; // ميل للتوازن
+  if (S.married) S.happy += 2;
+  if (S.partner) S.partner.rel += rnd(-6, 3);
+
+  // أحداث عشوائية
+  randomEvent();
+
+  normalize();
+  // الموت
+  const deathChance = S.health <= 0 ? 1 : S.age > 70 ? (S.age - 70) / 60 + (100 - S.health) / 400 : S.health < 15 ? 0.15 : 0.001;
+  if (chance(deathChance)) { die(); return; }
+
+  resetEnergy();
+  save(); render();
+}
+
+const EVENTS = [
+  { p:.06, cond:()=>S.age>=3,  run(){ const s=pick(["الإنفلونزا","التهاب حاد","الحصبة","آلام الظهر"]); S.sick=s; return [`🤒 أُصبت بـ${s}. يجب أن تزور الطبيب.`,"bad"]; } },
+  { p:.05, cond:()=>S.age>=6 && S.age<18, run(){ S.smart+=5; return ["🏆 فزت بمسابقة علمية في المدرسة!","good"]; } },
+  { p:.04, cond:()=>S.age>=6 && S.age<16, run(){ S.happy-=8; return ["😢 تعرضت للتنمر في المدرسة.","bad"]; } },
+  { p:.04, cond:()=>S.age>=16, run(){ const g=rnd(20,500); S.money+=g; return [`💵 وجدت ${fmt(g)} في الشارع!`,"good"]; } },
+  { p:.03, cond:()=>S.age>=18 && S.assets.includes("car"), run(){ S.health-=15; S.money-=2000; return ["🚗💥 تعرضت لحادث سيارة! كلفك الإصلاح $2,000.","bad"]; } },
+  { p:.03, cond:()=>S.age>=20, run(){ S.happy+=8; return ["🌅 كانت سنة هادئة وجميلة.","good"]; } },
+  { p:.02, cond:()=>S.job, run(){ const b=Math.round(S.job.salary*.15); S.money+=b; return [`🎁 حصلت على مكافأة نهاية سنة ${fmt(b)}!`,"good"]; } },
+  { p:.02, cond:()=>S.age>=25, run(){ S.money-=Math.round(Math.max(0,S.money)*.1); return ["🦠 تعرضت لعملية احتيال إلكتروني وخسرت جزءاً من أموالك.","bad"]; } },
+  { p:.015, cond:()=>S.age>=40, run(){ S.sick="مرض القلب"; S.health-=20; return ["❤️‍🩹 شُخّصت بمرض في القلب! اعتنِ بصحتك.","bad"]; } },
+  { p:.03, cond:()=>S.friends.length>0, run(){ const f=pick(S.friends); f.rel+=10; return [`🎂 فاجأك ${f.name} بهدية جميلة.`,"good"]; } },
+  { p:.02, cond:()=>S.partner && S.partner.rel<30, run(){ const n=S.partner.name; S.partner=null; S.married=false; S.happy-=20; return [`💔 ${n} قرر/ت إنهاء العلاقة.`,"bad"]; } },
+];
+
+function randomEvent() {
+  for (const e of EVENTS) if (e.cond() && chance(e.p)) { const [t, c] = e.run(); log(t, c); }
+  // قرار تفاعلي أحياناً
+  if (S.age >= 14 && chance(.12)) setTimeout(() => showDilemma(), 300);
+}
+
+const DILEMMAS = [
+  { q: "🧳 وجدت محفظة فيها $800 وبطاقة صاحبها. ماذا تفعل؟", min:12, opts: [
+    { t: "أعيدها لصاحبها", f(){ S.happy+=10; S.friends.push({name:pick(MALE),rel:70}); return ["😇 أعدت المحفظة، وأصبح صاحبها صديقك.","good"]; } },
+    { t: "آخذ المال", f(){ S.money+=800; S.happy-=3; return ["😈 أخذت المال... ضميرك يؤنبك قليلاً.","warn"]; } },
+  ]},
+  { q: "📞 صديق يطلب منك قرضاً بقيمة $2,000.", min:20, opts: [
+    { t: "أقرضه", f(){ if(S.money<2000) return ["😅 ليس لديك ما يكفي من المال.",""]; S.money-=2000; if(chance(.6)){ S.money+=2200; return ["🤝 أعاد صديقك المال مع شكر وتقدير.","good"]; } return ["😒 لم يُعد صديقك المال أبداً.","bad"]; } },
+    { t: "أعتذر بلطف", f(){ return ["🙏 اعتذرت لصديقك. تفهّم الأمر.",""]; } },
+  ]},
+  { q: "💼 عرض عمل في مدينة أخرى براتب أعلى بـ30%، لكنك ستبتعد عن أهلك.", min:22, cond:()=>!!S.job, opts: [
+    { t: "أقبل العرض", f(){ S.job.salary=Math.round(S.job.salary*1.3); S.parents.forEach(p=>p.rel-=10); S.city=pick(CITIES); return [`✈️ انتقلت إلى ${S.city} براتب جديد ${fmt(S.job.salary)}.`,"good"]; } },
+    { t: "أبقى قرب أهلي", f(){ S.parents.forEach(p=>p.rel+=8); S.happy+=4; return ["🏠 فضّلت البقاء قرب عائلتك.","good"]; } },
+  ]},
+  { q: "🚀 صديقك يدعوك للاستثمار في مشروعه الناشئ بـ$10,000.", min:21, opts: [
+    { t: "أستثمر", f(){ if(S.money<10000) return ["😅 لا تملك المبلغ الكافي.",""]; S.money-=10000; if(chance(.3)){ const g=rnd(30000,120000); S.money+=g; return [`🚀 نجح المشروع! ربحت ${fmt(g)}.`,"good"]; } return ["📉 فشل المشروع وخسرت استثمارك.","bad"]; } },
+    { t: "أرفض", f(){ return ["🤷 رفضت الاستثمار.",""]; } },
+  ]},
+  { q: "🐶 وجدت كلباً صغيراً ضائعاً تحت المطر.", min:8, opts: [
+    { t: "أتبناه", f(){ S.happy+=12; S.friends.push({name:"🐶 الكلب "+pick(["لولو","ريكس","بسبوسة","فلفل"]),rel:95}); return ["🐶 تبنيت الكلب، أصبح صديقك الوفي.","good"]; } },
+    { t: "أتركه", f(){ S.happy-=3; return ["🌧️ تركت الكلب ومضيت.",""]; } },
+  ]},
+  { q: "🧪 يعرض عليك زميل نسخة من أسئلة الامتحان.", min:14, max:30, opts: [
+    { t: "أقبلها", f(){ if(chance(.3)){ S.happy-=15; S.smart-=3; return ["🚨 كُشف أمرك وعوقبت!","bad"]; } S.performance+=10; return ["😬 نجحت في الامتحان بسهولة...","warn"]; } },
+    { t: "أرفض وأدرس", f(){ S.smart+=4; return ["📚 رفضت ودرست بجد. أحسنت!","good"]; } },
+  ]},
+];
+
+function showDilemma() {
+  if (!S.alive) return;
+  const list = DILEMMAS.filter(d => S.age >= d.min && (!d.max || S.age <= d.max) && (!d.cond || d.cond()));
+  if (!list.length) return;
+  const d = pick(list);
+  modal(`<h2>🤔 قرار</h2><p>${d.q}</p><div class="choices">${d.opts.map((o, i) => `<button data-i="${i}">${o.t}</button>`).join("")}</div>`,
+    box => box.querySelectorAll("button[data-i]").forEach(b => b.onclick = () => {
+      const [t, c] = d.opts[+b.dataset.i].f(); log(t, c); normalize(); save(); render(); closeModal();
+    }));
+}
+
+function die() {
+  S.alive = false;
+  const causes = S.health <= 5 ? ["مضاعفات صحية", "فشل في القلب", "مرض عضال"] : ["الشيخوخة", "نوبة قلبية مفاجئة", "سكتة دماغية", "حادث مأساوي"];
+  const cause = pick(causes);
+  log(`⚰️ توفيت عن عمر ${S.age} سنة بسبب ${cause}.`, "bad");
+  const netWorth = S.money + S.assets.reduce((s, id) => s + (ASSETS.find(a => a.id === id)?.price || 0) * .7, 0);
+  const score = Math.round(S.age * 10 + S.happy * 5 + S.edu * 100 + Math.max(0, netWorth) / 1000 + S.children.length * 150 + (S.married ? 200 : 0) + S.friends.length * 30 - S.criminal * 100);
+  const best = +localStorage.getItem("reallife_best") || 0;
+  if (score > best) localStorage.setItem("reallife_best", score);
+  save(); render();
+  modal(`<h2>⚰️ انتهت الحياة</h2>
+    <p><b>${S.name}</b> (${S.age} سنة) — ${cause}</p>
+    <p>🎓 التعليم: ${eduName()}<br>💰 الثروة: ${fmt(netWorth)}<br>👨‍👩‍👧 الأطفال: ${S.children.length}<br>🧑‍🤝‍🧑 الأصدقاء: ${S.friends.length}<br>💍 ${S.married ? "متزوج/ة" : "أعزب/عزباء"}</p>
+    <h3>🏅 النقاط: ${score} ${score > best ? "— رقم قياسي جديد!" : `(الأفضل: ${best})`}</h3>
+    <div class="choices"><button class="primary" id="again">🔄 ابدأ حياة جديدة</button><button id="close">📜 راجع السجل</button></div>`,
+    box => { box.querySelector("#again").onclick = () => { closeModal(); startScreen(); }; box.querySelector("#close").onclick = closeModal; });
+}
+
+function normalize() {
+  ["health","happy","smart","looks","fit","performance"].forEach(k => S[k] = clamp(S[k]));
+  if (S.partner) S.partner.rel = clamp(S.partner.rel);
+  S.friends.forEach(f => f.rel = clamp(f.rel));
+  S.parents.forEach(f => f.rel = clamp(f.rel));
+}
+
+// ======================= العرض =======================
+function lifeStage() {
+  const a = S.age;
+  if (a < 3) return ["رضيع", "👶"]; if (a < 12) return ["طفل", he() ? "👦" : "👧"];
+  if (a < 18) return ["مراهق", he() ? "🧑" : "👧"]; if (a < 60) return ["بالغ", he() ? "👨" : "👩"];
+  return ["مسن", he() ? "👴" : "👵"];
+}
+
+function statBar(label, v, color) {
+  return `<div class="stat"><div class="label"><span>${label}</span><span>${v}%</span></div><div class="bar"><i style="width:${v}%;background:${color}"></i></div></div>`;
+}
+const colorFor = v => v > 65 ? "var(--good)" : v > 35 ? "var(--warn)" : "var(--bad)";
+
+function render() {
+  const [stage, emoji] = lifeStage();
+  $("avatar").textContent = S.alive ? (S.jail ? "⛓️" : emoji) : "⚰️";
+  $("name").textContent = S.name + (S.alive ? "" : he() ? " (رحمه الله)" : " (رحمها الله)");
+  $("ageLine").textContent = `${S.age} سنة · ${stage} · ${S.city}`;
+  $("jobLine").textContent = S.jail ? `⛓️ في السجن (${S.jail} سنة متبقية)` : S.job ? `💼 ${S.job.name} — ${fmt(S.job.salary)}/سنة` : S.uni ? `🎓 طالب ${S.uni.name} (سنة ${S.uniYears + 1}/${S.uni.years})` : S.pension ? `🏖️ متقاعد — معاش ${fmt(S.pension)}` : "💼 بدون عمل";
+  $("eduLine").textContent = `🎓 التعليم: ${eduName()}` + (S.married ? ` · 💍 متزوج/ة من ${S.partner.name}` : S.partner ? ` · 💘 في علاقة مع ${S.partner.name}` : "");
+  $("money").textContent = "💰 " + fmt(S.money);
+  $("money").className = "money" + (S.money < 0 ? " neg" : "");
+  $("stats").innerHTML =
+    statBar("❤️ الصحة", S.health, colorFor(S.health)) + statBar("😊 السعادة", S.happy, colorFor(S.happy)) +
+    statBar("🧠 الذكاء", S.smart, "var(--accent)") + statBar("✨ المظهر", S.looks, "#c084fc") +
+    statBar("💪 اللياقة", S.fit, "#fb923c") + (S.job ? statBar("📊 الأداء الوظيفي", S.performance, colorFor(S.performance)) : "") +
+    (S.sick ? `<p class="muted" style="color:var(--bad)">🤒 مريض: ${S.sick}</p>` : "") + (S.addicted ? `<p class="muted" style="color:var(--bad)">🚬 مدمن تدخين</p>` : "");
+  $("yearPill").textContent = `📅 العمر ${S.age}`;
+  $("energyPill").textContent = `⚡ الطاقة ${S.energy}/${S.maxEnergy}`;
+  $("nextYear").disabled = !S.alive;
+
+  $("log").innerHTML = S.log.map(l => `<p class="${l.cls}"><span class="age">${l.age}:</span> ${l.text}</p>`).join("");
+
+  $("tabs").innerHTML = TABS.map(t => `<button class="${S.tab === t.id ? "active" : ""}" data-tab="${t.id}">${t.label}</button>`).join("");
+  $("tabs").querySelectorAll("button").forEach(b => b.onclick = () => { S.tab = b.dataset.tab; render(); });
+
+  const box = $("actions"); box.innerHTML = "";
+  const blocked = !S.alive || S.jail > 0;
+  if (S.tab === "jobs") {
+    const list = JOBS.filter(j => S.age >= j.minAge);
+    if (S.age < 16) box.innerHTML = `<p class="muted">لا يمكنك العمل قبل سن 16.</p>`;
+    else if (S.uni) box.innerHTML = `<p class="muted">أنت تدرس حالياً. أنهِ دراستك أو انسحب أولاً.</p>`;
+    list.forEach(j => {
+      if (S.uni) return;
+      const ok = S.edu >= j.edu;
+      const b = document.createElement("button");
+      b.innerHTML = `${j.name}<small>${fmt(j.salary)}/سنة · يتطلب: ${EDU[j.edu]}</small>`;
+      b.disabled = blocked || !ok || S.energy < 1 || (S.job && S.job.id === j.id);
+      b.onclick = () => applyJob(j);
+      box.appendChild(b);
+    });
+  } else if (S.tab === "people") {
+    const rows = [];
+    const row = (p, kind, i, extra = "") => `<div class="rel"><span>${p.name} ${p.age !== undefined ? `<span class="muted">(${p.age} سنة)</span>` : ""}<br><span class="muted">العلاقة: ${p.rel}%</span></span><span>
+      <button data-k="${kind}" data-i="${i}" data-t="time">☕ وقت</button>
+      <button data-k="${kind}" data-i="${i}" data-t="money">${kind === "parent" && S.age < 18 ? "💵 اطلب مصروف" : "🎁 هدية"}</button>
+      <button data-k="${kind}" data-i="${i}" data-t="fight">😠</button>${extra}</span></div>`;
+    S.parents.forEach((p, i) => { if (p.alive) rows.push(row(p, "parent", i)); });
+    if (S.partner) rows.push(row({ ...S.partner, name: (S.married ? "💍 " : "💘 ") + S.partner.name }, "partner", 0, `<button data-k="partner" data-i="0" data-t="breakup">💔</button>`));
+    S.children.forEach((c, i) => rows.push(row({ ...c, name: "👶 " + c.name }, "child", i)));
+    S.friends.forEach((f, i) => rows.push(row(f, "friend", i)));
+    box.style.display = "block";
+    box.innerHTML = rows.join("") || `<p class="muted">لا يوجد أحد في حياتك حالياً.</p>`;
+    box.querySelectorAll("button[data-k]").forEach(b => { b.disabled = blocked || S.energy < 1; b.onclick = () => interact(b.dataset.k, +b.dataset.i, b.dataset.t); });
+    return;
+  } else {
+    const list = ACTIONS.filter(a => a.tab === S.tab && a.cond());
+    if (!list.length) box.innerHTML = `<p class="muted">لا توجد أنشطة متاحة في هذه المرحلة من العمر.</p>`;
+    list.forEach(a => {
+      const b = document.createElement("button");
+      b.innerHTML = `${a.label}<small>${a.desc}${a.cost ? ` · ⚡${a.cost}` : ""}</small>`;
+      b.disabled = blocked || S.energy < a.cost || (a.money && S.money < a.money);
+      b.onclick = () => doAction(a);
+      box.appendChild(b);
+    });
+  }
+  box.style.display = "";
+  if (S.jail > 0 && S.alive) box.insertAdjacentHTML("afterbegin", `<p class="muted" style="grid-column:1/-1">⛓️ أنت في السجن. انتظر حتى تنتهي مدتك.</p>`);
+}
+
+function modal(html, bind) { $("modalBox").innerHTML = html; $("modal").classList.add("show"); bind && bind($("modalBox")); }
+function closeModal() { $("modal").classList.remove("show"); }
+
+function startScreen() {
+  modal(`<h2>🌍 حياة جديدة</h2>
+    <p class="muted">عِش حياة كاملة من الولادة حتى الشيخوخة. ادرس، اعمل، أحب، وكوّن عائلة. كل قرار له عواقب!</p>
+    <label>الاسم الأول (اختياري)<input id="fname" placeholder="اتركه فارغاً لاسم عشوائي"></label><br><br>
+    <label>الجنس<select id="gender"><option value="">عشوائي</option><option value="m">ذكر</option><option value="f">أنثى</option></select></label>
+    <div class="choices"><button class="primary" id="start">▶️ ابدأ الحياة</button></div>`,
+    box => box.querySelector("#start").onclick = () => { newLife(box.querySelector("#fname").value.trim(), box.querySelector("#gender").value); closeModal(); });
+}
+
+$("nextYear").onclick = nextYear;
+$("newGame").onclick = () => { if (!S || !S.alive || confirm("هل تريد حقاً بدء حياة جديدة؟ ستفقد هذه الحياة.")) startScreen(); };
+
+if (load()) render(); else { newLife(); startScreen(); }
+</script>
+</body>
+</html>
