@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT || 3000);
-const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
+const model = process.env.ANTHROPIC_MODEL || 'claude-opus-5-5';
 const limitByIp = new Map();
 let globalDay = new Date().toISOString().slice(0, 10);
 let globalDailyCount = 0;
