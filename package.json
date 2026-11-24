@@ -1,0 +1,10 @@
+{
+  "name": "shouq-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "شوق — مساعد ذكاء اصطناعي عربي",
+  "type": "module",
+  "scripts": { "start": "node server.mjs" },
+  "engines": { "node": ">=20" }
+}
+
