@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: shouq-ai
+    runtime: node
+    plan: free
+    buildCommand: ""
+    startCommand: node server.mjs
+    healthCheckPath: /health
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-haiku-4-5-20251001
+
